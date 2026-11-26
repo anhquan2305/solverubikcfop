@@ -13,7 +13,7 @@ st.set_page_config(
 st.title("🧊 Ứng Dụng Học Giải Rubik 3x3")
 st.markdown(
     "Luyện tập từ phương pháp cơ bản (LBL) đến phương pháp giải nhanh **CFOP** "
-    "với mô phỏng 3D trực quan từng trường hợp F2L và bộ bấm giờ."
+    "với mô phỏng 3D trực quan cho từng giai đoạn và bộ bấm giờ."
 )
 
 # Khởi tạo trạng thái lưu tiến độ học CFOP
@@ -21,7 +21,13 @@ if "learned_cfop" not in st.session_state:
     st.session_state.learned_cfop = set()
 
 
-def render_twisty_case_preview(setup_alg: str, solve_alg: str, height: int = 225):
+def render_twisty_case_preview(
+    setup_alg: str,
+    solve_alg: str,
+    height: int = 225,
+    camera_latitude: int = 35,
+    camera_longitude: int = 35,
+):
     """Hiển thị trình phát Rubik 3D cho từng tình huống giải."""
     html_code = f"""
     <script src="https://cdn.cubing.net/js/cubing/twisty" type="module"></script>
@@ -30,6 +36,8 @@ def render_twisty_case_preview(setup_alg: str, solve_alg: str, height: int = 225
             puzzle="3x3x3"
             experimental-setup-alg="{setup_alg}"
             alg="{solve_alg}"
+            camera-latitude="{camera_latitude}"
+            camera-longitude="{camera_longitude}"
             background="none"
             control-panel="bottom-row"
             style="width: 100%; height: {height}px;">
@@ -39,8 +47,71 @@ def render_twisty_case_preview(setup_alg: str, solve_alg: str, height: int = 225
     components.html(html_code, height=height + 20)
 
 
+def render_algorithm_cards(items: list[dict], default_camera: tuple[int, int] = (35, 35)):
+    """Hiển thị danh sách công thức kèm mô phỏng 3D và ô đánh dấu đã thuộc."""
+    for item in items:
+        with st.expander(f"**{item['title']}** — `{item['alg']}`", expanded=True):
+            col_info, col_view = st.columns([1.3, 1])
+            with col_info:
+                st.markdown(f"**Nhận diện:** {item['desc']}")
+                st.markdown("**Công thức:**")
+                st.code(item["alg"], language="text")
+                if item.get("tip"):
+                    st.info(f"💡 **Mẹo:** {item['tip']}")
+
+                checked = st.checkbox(
+                    "Đã thuộc công thức này",
+                    key=item["id"],
+                    value=(item["id"] in st.session_state.learned_cfop),
+                )
+                if checked:
+                    st.session_state.learned_cfop.add(item["id"])
+                else:
+                    st.session_state.learned_cfop.discard(item["id"])
+
+            with col_view:
+                lat, lon = item.get("camera", default_camera)
+                render_twisty_case_preview(
+                    setup_alg=item["setup"],
+                    solve_alg=item["alg"],
+                    camera_latitude=lat,
+                    camera_longitude=lon,
+                )
+
+
+def render_cross_section():
+    """Phần 1: Cross kèm mô phỏng 3D trực quan."""
+    st.subheader("1️⃣ Cross — Giải chữ thập ở mặt đáy")
+    st.caption("Nhấn Play trên mô hình 3D để xem cách đưa cạnh trắng xuống mặt đáy (D) và khớp tâm.")
+
+    col_c1, col_c2 = st.columns([1.35, 1])
+    with col_c1:
+        st.markdown("""
+        * **Mục tiêu:** Giải thẳng 4 viên cạnh trắng ở **mặt đáy (D)** và khớp màu tâm bên trong **dưới 8 bước xoay**.
+        * **Khác biệt với cách cơ bản:** Không làm hoa cúc ở mặt trên, không lật ngược khối Rubik sau khi xong Cross.
+        * **Nguyên tắc luyện tập:**
+          1. **Tận dụng 15 giây quan sát (Inspection):** Nhớ vị trí cả 4 viên cạnh trước khi chạm tay vào khối.
+          2. **Giải theo vị trí tương đối:** Đặt đúng thứ tự các màu quanh đáy, sau đó xoay mặt D một lượt để khớp toàn bộ tâm.
+          3. **Tập giải nhắm mắt (Blind Cross):** Quan sát xong, nhắm mắt và xoay hết Cross để tăng khả năng nhìn trước cho F2L.
+        """)
+        st.info(
+            "**Tóm tắt chỉ số Phần 1**\n\n"
+            "- Số công thức học thuộc: **0** (Giải trực quan)\n"
+            "- Số bước tối ưu: **6 – 8 moves**\n"
+            "- Mục tiêu thời gian: **< 3 giây**"
+        )
+    with col_c2:
+        st.markdown("**Ví dụ mô phỏng đưa 1 cạnh trắng vào đáy:**")
+        render_twisty_case_preview(
+            setup_alg="F2 D' R2 D",
+            solve_alg="D' R2 D F2",
+            camera_latitude=-25,
+            camera_longitude=35,
+        )
+
+
 def render_f2l_cases_with_visuals():
-    """Hiển thị 4 trường hợp F2L cơ bản kèm mô phỏng 3D trực quan và đánh dấu đã thuộc."""
+    """Phần 2: 4 trường hợp F2L cơ bản kèm mô phỏng 3D trực quan."""
     st.subheader("2️⃣ F2L (First Two Layers) — Minh họa trực quan từng trường hợp")
     st.caption(
         "Nhấn nút Play trên từng khung mô phỏng để xem cách ghép cặp góc + cạnh "
@@ -82,27 +153,183 @@ def render_f2l_cases_with_visuals():
         },
     ]
 
-    for case in f2l_visual_cases:
-        with st.expander(f"**{case['title']}** — `{case['alg']}`", expanded=True):
-            col_info, col_view = st.columns([1.3, 1])
-            with col_info:
-                st.markdown(f"**Nhận diện:** {case['desc']}")
-                st.markdown("**Công thức giải:**")
-                st.code(case["alg"], language="text")
-                st.info(f"💡 **Mẹo:** {case['tip']}")
+    render_algorithm_cards(f2l_visual_cases)
 
-                checked = st.checkbox(
-                    "Đã thuộc trường hợp này",
-                    key=case["id"],
-                    value=(case["id"] in st.session_state.learned_cfop),
-                )
-                if checked:
-                    st.session_state.learned_cfop.add(case["id"])
-                else:
-                    st.session_state.learned_cfop.discard(case["id"])
 
-            with col_view:
-                render_twisty_case_preview(setup_alg=case["setup"], solve_alg=case["alg"])
+def render_oll_section():
+    """Phần 3: 2-Look OLL kèm mô phỏng 3D cho từng công thức."""
+    st.subheader("3️⃣ OLL (Orient Last Layer) — Làm đều màu mặt trên")
+    st.write(
+        "Mục tiêu: Toàn bộ mặt trên cùng màu Vàng (chưa cần đúng màu viền). "
+        "Người mới nên dùng **2-Look OLL** (10 công thức chia làm 2 bước nhỏ)."
+    )
+
+    oll_sub = st.segmented_control(
+        "Chọn bước trong 2-Look OLL:",
+        ["Bước 3A: Tạo chữ thập vàng (3 công thức)", "Bước 3B: Lật đều 4 góc vàng (7 công thức)"],
+        default="Bước 3A: Tạo chữ thập vàng (3 công thức)",
+    )
+
+    if "3A" in oll_sub:
+        oll_items = [
+            {
+                "id": "oll_line",
+                "title": "Hình đường thẳng (Line)",
+                "desc": "3 ô vàng thẳng hàng ngang ở mặt trên.",
+                "setup": "F U R U' R' F'",
+                "alg": "F R U R' U' F'",
+                "tip": "Giữ đường thẳng nằm ngang trước khi thực hiện công thức.",
+            },
+            {
+                "id": "oll_l",
+                "title": "Hình chữ L (L-Shape)",
+                "desc": "2 cạnh vàng tạo góc ở vị trí 9h và 12h (hoặc xoay 2 lớp trước).",
+                "setup": "f U R U' R' f'",
+                "alg": "f R U R' U' f'",
+                "tip": "Xoay đồng thời 2 lớp trước (f) giúp tạo chữ thập nhanh.",
+            },
+            {
+                "id": "oll_dot",
+                "title": "Hình dấu chấm (Dot)",
+                "desc": "Chỉ có tâm vàng ở mặt trên, không có cạnh vàng nào.",
+                "setup": "f U R U' R' f' F U R U' R' F'",
+                "alg": "F R U R' U' F' f R U R' U' f'",
+                "tip": "Thực hiện nối tiếp công thức đường thẳng và chữ L.",
+            },
+        ]
+    else:
+        oll_items = [
+            {
+                "id": "oll_sune",
+                "title": "Sune (Con cá thuận)",
+                "desc": "1 góc vàng ở dưới-trái, 3 góc còn lại hướng ra ngoài.",
+                "setup": "R U2 R' U' R U' R'",
+                "alg": "R U R' U R U2 R'",
+                "tip": "Công thức nền tảng quan trọng nhất cho phần OLL.",
+            },
+            {
+                "id": "oll_antisune",
+                "title": "Anti-Sune (Con cá ngược)",
+                "desc": "1 góc vàng ở trên-phải, 3 góc còn lại hướng ngược chiều.",
+                "setup": "R U R' U R U2 R'",
+                "alg": "R U2 R' U' R U' R'",
+                "tip": "Thực hiện ngược chiều Sune để tiết kiệm lượt xoay.",
+            },
+            {
+                "id": "oll_h",
+                "title": "Hình chữ H (Cross + 4 góc đối)",
+                "desc": "2 cặp góc vàng hướng đối diện nhau ra trước và sau.",
+                "setup": "R U2 R' U' R U R' U' R U' R'",
+                "alg": "R U R' U R U' R' U R U2 R'",
+                "tip": "Dễ nhớ theo nhịp R-U xen kẽ.",
+            },
+            {
+                "id": "oll_pi",
+                "title": "Hình chữ Pi",
+                "desc": "2 góc vàng hướng sang trái, 2 góc hướng ra trước và sau.",
+                "setup": "R' U2 R2 U R2 U R2 U2 R'",
+                "alg": "R U2 R2 U' R2 U' R2 U2 R",
+                "tip": "Tập trung vào cụm R2 xoay liên tiếp.",
+            },
+            {
+                "id": "oll_u",
+                "title": "Hình chữ U (Headlights)",
+                "desc": "2 góc vàng đã đúng ở sau, 2 góc trước hướng thẳng về mặt bạn.",
+                "setup": "R U2 R D R' U2 R D' R2",
+                "alg": "R2 D R' U2 R D' R' U2 R'",
+                "tip": "Giữ 2 góc đã khớp màu vàng ở mặt sau.",
+            },
+            {
+                "id": "oll_t",
+                "title": "Hình chữ T",
+                "desc": "2 góc vàng bên phải đã đúng, 2 góc bên trái hướng ra trước/sau.",
+                "setup": "F R' F' r U R U' r'",
+                "alg": "r U R' U' r' F R F'",
+                "tip": "Phối hợp lớp đôi r và các bước R-U gọn tay.",
+            },
+            {
+                "id": "oll_bowtie",
+                "title": "Hình nơ (Bowtie / L)",
+                "desc": "2 góc vàng chéo nhau đã đúng, 2 góc còn lại lệch hướng.",
+                "setup": "R' F' r U R' U' r' F",
+                "alg": "F' r U R' U' r' F R",
+                "tip": "Kiểm tra kỹ 2 góc chéo đã khớp vàng trước khi xoay.",
+            },
+        ]
+
+    render_algorithm_cards(oll_items, default_camera=(45, 30))
+
+
+def render_pll_section():
+    """Phần 4: 2-Look PLL kèm mô phỏng 3D cho từng công thức."""
+    st.subheader("4️⃣ PLL (Permute Last Layer) — Hoán vị tầng cuối")
+    st.write(
+        "Mục tiêu: Đưa toàn bộ góc và cạnh tầng 3 về đúng màu các mặt bên. "
+        "Chia làm **2-Look PLL** (2 bước góc + 4 bước cạnh)."
+    )
+
+    pll_sub = st.segmented_control(
+        "Chọn bước trong 2-Look PLL:",
+        ["Bước 4A: Hoán vị các góc (2 công thức)", "Bước 4B: Hoán vị các cạnh (4 công thức)"],
+        default="Bước 4A: Hoán vị các góc (2 công thức)",
+    )
+
+    if "4A" in pll_sub:
+        pll_items = [
+            {
+                "id": "pll_t",
+                "title": "T-Perm (Đổi 2 góc kề bên phải)",
+                "desc": "Có 2 góc cùng màu ở mặt bên trái (đặt bên trái rồi làm).",
+                "setup": "F R U' R' U R U2 R2 F' R U R U' R'",
+                "alg": "R U R' U' R' F R2 U' R' U' R U R' F'",
+                "tip": "Một trong các công thức PLL phổ biến và dễ nhớ nhịp nhất.",
+            },
+            {
+                "id": "pll_y",
+                "title": "Y-Perm (Đổi 2 góc chéo nhau)",
+                "desc": "Không có cặp góc nào cùng màu ở bất kỳ mặt bên nào.",
+                "setup": "F R' F' R U R U' R' F R' U R U R' F'",
+                "alg": "F R U' R' U' R U R' F' R U R' U' R' F R F'",
+                "tip": "Tách làm 2 cụm rõ ràng để tránh nhầm chiều F và F'.",
+            },
+        ]
+    else:
+        pll_items = [
+            {
+                "id": "pll_ua",
+                "title": "Ua-Perm (Xoay 3 cạnh thuận chiều)",
+                "desc": "1 mặt đã hoàn thiện (đặt ra sau), 3 cạnh còn lại chạy thuận kim đồng hồ.",
+                "setup": "R2 U R U R' U' R' U' R' U R'",
+                "alg": "R U' R U R U R U' R' U' R2",
+                "tip": "Đặt cạnh đã đúng vị trí ở mặt sau (Back).",
+            },
+            {
+                "id": "pll_ub",
+                "title": "Ub-Perm (Xoay 3 cạnh ngược chiều)",
+                "desc": "1 mặt đã hoàn thiện (đặt ra sau), 3 cạnh còn lại chạy ngược kim đồng hồ.",
+                "setup": "R2 U R U R' U' R' U' R' U R'",
+                "alg": "R2 U R U R' U' R' U' R' U R'",
+                "tip": "Đặt cạnh đã đúng vị trí ở mặt sau (Back).",
+            },
+            {
+                "id": "pll_h",
+                "title": "H-Perm (Đổi 2 cặp cạnh đối diện)",
+                "desc": "4 mặt đều có cạnh đối diện màu nhau.",
+                "setup": "M2 U' M2 U2' M2 U' M2",
+                "alg": "M2 U M2 U2 M2 U M2",
+                "tip": "Dùng lớp giữa M2 giúp thao tác nhanh trên 3x3.",
+            },
+            {
+                "id": "pll_z",
+                "title": "Z-Perm (Đổi 2 cặp cạnh kề nhau)",
+                "desc": "Cạnh trước đổi với cạnh phải, cạnh sau đổi với cạnh trái.",
+                "setup": "M2 U2 M U' M2' U' M2' U' M",
+                "alg": "M' U M2 U M2 U M' U2 M2",
+                "tip": "Luyện đều tay lớp M và U để chuyển mạch mượt.",
+            },
+        ]
+
+    render_algorithm_cards(pll_items, default_camera=(45, 30))
 
 
 # Tạo 4 Tab chính
@@ -176,7 +403,7 @@ with tab1:
 # ==========================================
 with tab2:
     st.header("⚡ Phương Pháp Giải Nhanh CFOP (Chia 4 Phần)")
-    st.markdown("Chọn từng giai đoạn bên dưới để học mục tiêu, cách nhận diện và bộ công thức tương ứng.")
+    st.markdown("Chọn từng giai đoạn bên dưới để học mục tiêu, cách nhận diện, xem mô phỏng 3D và bộ công thức.")
 
     cfop_part = st.radio(
         "Chọn giai đoạn CFOP:",
@@ -191,122 +418,14 @@ with tab2:
 
     st.divider()
 
-    # --- PHẦN 1: CROSS ---
     if "Phần 1" in cfop_part:
-        st.subheader("1️⃣ Cross — Giải chữ thập ở mặt đáy")
-        col_c1, col_c2 = st.columns([1.4, 1])
-        with col_c1:
-            st.markdown("""
-            * **Mục tiêu:** Giải thẳng 4 viên cạnh trắng ở **mặt đáy (D)** và khớp màu tâm bên trong **dưới 8 bước xoay**.
-            * **Sự khác biệt so với cách cơ bản:** Không làm hoa cúc ở mặt trên, không lật ngược khối Rubik sau khi xong Cross.
-            * **Nguyên tắc luyện tập:**
-              1. **Tận dụng 15 giây quan sát (Inspection):** Nhớ vị trí cả 4 viên cạnh trước khi chạm tay vào khối.
-              2. **Giải theo vị trí tương đối:** Đặt đúng thứ tự các màu (Đỏ đối Cam, Xanh lá đối Xanh dương), sau đó xoay mặt D một lượt để khớp toàn bộ tâm.
-              3. **Tập giải nhắm mắt (Blind Cross):** Quan sát xong, nhắm mắt và xoay hết Cross để tăng khả năng nhìn trước cho phần F2L.
-            """)
-        with col_c2:
-            st.info(
-                "**Tóm tắt chỉ số Phần 1**\n\n"
-                "- Số công thức học thuộc: **0** (Giải trực quan)\n"
-                "- Số bước tối ưu: **6 – 8 moves**\n"
-                "- Mục tiêu thời gian: **< 3 giây**"
-            )
-
-    # --- PHẦN 2: F2L (KÈM MÔ PHỎNG 3D) ---
+        render_cross_section()
     elif "Phần 2" in cfop_part:
         render_f2l_cases_with_visuals()
-
-    # --- PHẦN 3: OLL ---
     elif "Phần 3" in cfop_part:
-        st.subheader("3️⃣ OLL (Orient Last Layer) — Làm đều màu mặt trên")
-        st.write(
-            "Mục tiêu: Toàn bộ mặt trên cùng màu Vàng (chưa cần đúng màu viền). "
-            "Người mới nên dùng **2-Look OLL** (10 công thức chia làm 2 bước nhỏ)."
-        )
-
-        oll_sub = st.segmented_control(
-            "Chọn bước trong 2-Look OLL:",
-            ["Bước 3A: Tạo chữ thập vàng (3 công thức)", "Bước 3B: Lật đều 4 góc vàng (7 công thức)"],
-            default="Bước 3A: Tạo chữ thập vàng (3 công thức)",
-        )
-
-        if "3A" in oll_sub:
-            oll_items = [
-                {"id": "oll_line", "title": "Hình đường thẳng (Line)", "desc": "3 ô vàng thẳng hàng ngang ở mặt trên.", "alg": "F R U R' U' F'"},
-                {"id": "oll_l", "title": "Hình chữ L (L-Shape)", "desc": "2 cạnh vàng tạo góc ở vị trí 9h và 12h (hoặc xoay 2 lớp trước).", "alg": "f R U R' U' f'"},
-                {"id": "oll_dot", "title": "Hình dấu chấm (Dot)", "desc": "Chỉ có tâm vàng ở mặt trên, không có cạnh vàng nào.", "alg": "F R U R' U' F' f R U R' U' f'"},
-            ]
-        else:
-            oll_items = [
-                {"id": "oll_sune", "title": "Sune (Con cá thuận)", "desc": "1 góc vàng ở dưới-trái, 3 góc còn lại hướng ra ngoài.", "alg": "R U R' U R U2 R'"},
-                {"id": "oll_antisune", "title": "Anti-Sune (Con cá ngược)", "desc": "1 góc vàng ở trên-phải, 3 góc còn lại hướng ngược chiều.", "alg": "R U2 R' U' R U' R'"},
-                {"id": "oll_h", "title": "Hình chữ H (Cross + 4 góc đối)", "desc": "2 cặp góc vàng hướng đối diện nhau ra trước và sau.", "alg": "R U R' U R U' R' U R U2 R'"},
-                {"id": "oll_pi", "title": "Hình chữ Pi", "desc": "2 góc vàng hướng sang trái, 2 góc hướng ra trước và sau.", "alg": "R U2 R2 U' R2 U' R2 U2 R"},
-                {"id": "oll_u", "title": "Hình chữ U (Headlights)", "desc": "2 góc vàng đã đúng ở sau, 2 góc trước hướng thẳng về mặt bạn.", "alg": "R2 D R' U2 R D' R' U2 R'"},
-                {"id": "oll_t", "title": "Hình chữ T", "desc": "2 góc vàng bên phải đã đúng, 2 góc bên trái hướng ra trước/sau.", "alg": "r U R' U' r' F R F'"},
-                {"id": "oll_bowtie", "title": "Hình nơ (Bowtie / L)", "desc": "2 góc vàng chéo nhau đã đúng, 2 góc còn lại lệch hướng.", "alg": "F' r U R' U' r' F R"},
-            ]
-
-        for item in oll_items:
-            with st.expander(f"**{item['title']}** — `{item['alg']}`", expanded=True):
-                c1, c2 = st.columns([3, 1])
-                with c1:
-                    st.write(f"**Nhận diện:** {item['desc']}")
-                    st.code(item["alg"], language="text")
-                with c2:
-                    checked = st.checkbox(
-                        "Đã thuộc",
-                        key=item["id"],
-                        value=(item["id"] in st.session_state.learned_cfop),
-                    )
-                    if checked:
-                        st.session_state.learned_cfop.add(item["id"])
-                    else:
-                        st.session_state.learned_cfop.discard(item["id"])
-
-    # --- PHẦN 4: PLL ---
+        render_oll_section()
     elif "Phần 4" in cfop_part:
-        st.subheader("4️⃣ PLL (Permute Last Layer) — Hoán vị tầng cuối")
-        st.write(
-            "Mục tiêu: Đưa toàn bộ góc và cạnh tầng 3 về đúng màu các mặt bên. "
-            "Chia làm **2-Look PLL** (2 bước góc + 4 bước cạnh)."
-        )
-
-        pll_sub = st.segmented_control(
-            "Chọn bước trong 2-Look PLL:",
-            ["Bước 4A: Hoán vị các góc (2 công thức)", "Bước 4B: Hoán vị các cạnh (4 công thức)"],
-            default="Bước 4A: Hoán vị các góc (2 công thức)",
-        )
-
-        if "4A" in pll_sub:
-            pll_items = [
-                {"id": "pll_t", "title": "T-Perm (Đổi 2 góc kề bên phải)", "desc": "Có 2 góc cùng màu ở mặt bên trái (đặt bên trái rồi làm).", "alg": "R U R' U' R' F R2 U' R' U' R U R' F'"},
-                {"id": "pll_y", "title": "Y-Perm (Đổi 2 góc chéo nhau)", "desc": "Không có cặp góc nào cùng màu ở bất kỳ mặt bên nào.", "alg": "F R U' R' U' R U R' F' R U R' U' R' F R F'"},
-            ]
-        else:
-            pll_items = [
-                {"id": "pll_ua", "title": "Ua-Perm (Xoay 3 cạnh thuận chiều)", "desc": "1 mặt đã hoàn thiện (đặt ra sau), 3 cạnh còn lại chạy thuận kim đồng hồ.", "alg": "R U' R U R U R U' R' U' R2"},
-                {"id": "pll_ub", "title": "Ub-Perm (Xoay 3 cạnh ngược chiều)", "desc": "1 mặt đã hoàn thiện (đặt ra sau), 3 cạnh còn lại chạy ngược kim đồng hồ.", "alg": "R2 U R U R' U' R' U' R' U R'"},
-                {"id": "pll_h", "title": "H-Perm (Đổi 2 cặp cạnh đối diện)", "desc": "4 mặt đều có cạnh đối diện màu nhau.", "alg": "M2 U M2 U2 M2 U M2"},
-                {"id": "pll_z", "title": "Z-Perm (Đổi 2 cặp cạnh kề nhau)", "desc": "Cạnh trước đổi với cạnh phải, cạnh sau đổi với cạnh trái.", "alg": "M' U M2 U M2 U M' U2 M2"},
-            ]
-
-        for item in pll_items:
-            with st.expander(f"**{item['title']}** — `{item['alg']}`", expanded=True):
-                c1, c2 = st.columns([3, 1])
-                with c1:
-                    st.write(f"**Nhận diện:** {item['desc']}")
-                    st.code(item["alg"], language="text")
-                with c2:
-                    checked = st.checkbox(
-                        "Đã thuộc",
-                        key=item["id"],
-                        value=(item["id"] in st.session_state.learned_cfop),
-                    )
-                    if checked:
-                        st.session_state.learned_cfop.add(item["id"])
-                    else:
-                        st.session_state.learned_cfop.discard(item["id"])
+        render_pll_section()
 
     # Thanh tiến độ học CFOP
     st.divider()
