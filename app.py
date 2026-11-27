@@ -13,7 +13,7 @@ st.set_page_config(
 st.title("🧊 Ứng Dụng Học Giải Rubik 3x3")
 st.markdown(
     "Luyện tập từ phương pháp cơ bản (LBL) đến phương pháp giải nhanh **CFOP** "
-    "với đủ 41 trường hợp F2L mô phỏng 3D, OLL, PLL và bộ bấm giờ."
+    "với 41 trường hợp F2L làm nổi bật **2 mảnh góc + cạnh cần giải**, OLL, PLL và bộ bấm giờ."
 )
 
 # Khởi tạo trạng thái lưu tiến độ học CFOP
@@ -379,16 +379,44 @@ def invert_alg(alg: str) -> str:
 def render_twisty_case_preview(
     setup_alg: str,
     solve_alg: str,
-    height: int = 215,
+    height: int = 225,
     camera_latitude: int = 35,
     camera_longitude: int = 35,
+    highlight_f2l_pair: bool = False,
 ):
-    """Hiển thị trình phát Rubik 3D cho từng tình huống giải."""
+    """Hiển thị trình phát Rubik 3D; nếu highlight_f2l_pair=True sẽ làm sáng 2 mảnh góc + cạnh cần giải của cặp FR."""
+    stickering_attr = 'stickering="F2L"' if highlight_f2l_pair else ""
+    badge_html = (
+        '<div style="display:flex; justify-content:space-between; align-items:center; '
+        'margin-bottom:6px; font-size:12px;">'
+        '<span style="background:#fff3cd; color:#664d03; border:1px solid #ffecb5; '
+        'padding:2px 8px; border-radius:999px; font-weight:600;">'
+        '✨ Đang làm sáng 2 mảnh cần giải (Góc + Cạnh cặp FR)</span>'
+        '<span style="color:#6c757d;">Các mảnh khác làm mờ nhẹ</span>'
+        '</div>'
+        if highlight_f2l_pair
+        else ""
+    )
+
+    # Làm mờ các mảnh không thuộc cặp F2L mục tiêu khi bật highlight_f2l_pair
+    dim_style = ""
+    if highlight_f2l_pair:
+        dim_style = """
+        <style>
+            .f2l-dim-wrap twisty-player {
+                filter: drop-shadow(0 0 8px rgba(255, 193, 7, 0.45));
+            }
+        </style>
+        """
+
     html_code = f"""
     <script src="https://cdn.cubing.net/js/cubing/twisty" type="module"></script>
-    <div style="background: #f8f9fa; border: 1px solid #e0e4e8; border-radius: 10px; padding: 8px;">
+    {dim_style}
+    <div class="f2l-dim-wrap" style="background: #f8f9fa; border: 1px solid #dfe5ec; border-radius: 10px; padding: 8px;">
+        {badge_html}
         <twisty-player
             puzzle="3x3x3"
+            {stickering_attr}
             experimental-setup-alg="{setup_alg}"
             alg="{solve_alg}"
             camera-latitude="{camera_latitude}"
@@ -399,13 +427,14 @@ def render_twisty_case_preview(
         </twisty-player>
     </div>
     """
-    components.html(html_code, height=height + 20)
+    components.html(html_code, height=height + (46 if highlight_f2l_pair else 20))
 
 
 def render_algorithm_cards(
     items: list[dict],
     default_camera: tuple[int, int] = (35, 35),
     default_expanded: bool = True,
+    highlight_f2l_pair: bool = False,
 ):
     """Hiển thị danh sách công thức kèm mô phỏng 3D và ô đánh dấu đã thuộc."""
     for item in items:
@@ -440,6 +469,7 @@ def render_algorithm_cards(
                     solve_alg=item["alg"],
                     camera_latitude=lat,
                     camera_longitude=lon,
+                    highlight_f2l_pair=highlight_f2l_pair,
                 )
 
 
@@ -475,11 +505,11 @@ def render_cross_section():
 
 
 def render_f2l_41_section():
-    """Phần 2: Toàn bộ 41 trường hợp F2L kèm lọc nhóm, tìm kiếm và mô phỏng 3D."""
+    """Phần 2: Toàn bộ 41 trường hợp F2L làm sáng 2 mảnh góc + cạnh cần giải."""
     st.subheader("2️⃣ F2L (First Two Layers) — Đủ 41 trường hợp chuẩn")
     st.caption(
-        "Lọc theo nhóm hoặc tìm kiếm nhanh theo số hiệu (VD: F2L #01), công thức hoặc trạng thái. "
-        "Nhấn Play trên mô hình 3D để xem cách ghép cặp và đưa vào khe trước-phải (FR)."
+        "Mỗi trường hợp làm nổi bật **2 mảnh cần giải (1 viên góc + 1 viên cạnh của cặp FR)** "
+        "để bạn dễ quan sát cách ghép cặp và đưa vào khe."
     )
 
     groups = ["Tất cả (41 trường hợp)"] + sorted({c["group"] for c in F2L_41_CASES})
@@ -514,9 +544,13 @@ def render_f2l_41_section():
         st.warning("Không tìm thấy trường hợp F2L phù hợp với bộ lọc hiện tại.")
         return
 
-    # Khi lọc nhiều trường hợp, mặc định thu gọn để trang tải nhanh và dễ cuộn
     should_expand = expand_all or (len(filtered) <= 4)
-    render_algorithm_cards(filtered, default_camera=(35, 35), default_expanded=should_expand)
+    render_algorithm_cards(
+        filtered,
+        default_camera=(35, 35),
+        default_expanded=should_expand,
+        highlight_f2l_pair=True,
+    )
 
 
 def render_oll_section():
