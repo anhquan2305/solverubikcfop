@@ -13,7 +13,7 @@ st.set_page_config(
 st.title("🧊 Ứng Dụng Học Giải Rubik 3x3")
 st.markdown(
     "Luyện tập từ phương pháp cơ bản (LBL) đến phương pháp giải nhanh **CFOP** "
-    "với 41 trường hợp F2L làm sáng **2 mảnh góc + cạnh cần giải**, OLL, PLL và bộ bấm giờ."
+    "với 41 trường hợp F2L làm nổi bật **2 mảnh góc + cạnh cần giải**, OLL, PLL và bộ bấm giờ."
 )
 
 # Khởi tạo trạng thái lưu tiến độ học CFOP
@@ -379,16 +379,44 @@ def invert_alg(alg: str) -> str:
 def render_twisty_case_preview(
     setup_alg: str,
     solve_alg: str,
-    height: int = 215,
+    height: int = 225,
     camera_latitude: int = 35,
     camera_longitude: int = 35,
+    highlight_f2l_pair: bool = False,
 ):
-    """Hiển thị trình phát Rubik 3D cơ bản cho Cross / OLL / PLL."""
+    """Hiển thị trình phát Rubik 3D; nếu highlight_f2l_pair=True sẽ làm sáng 2 mảnh góc + cạnh cần giải của cặp FR."""
+    stickering_attr = 'stickering="F2L"' if highlight_f2l_pair else ""
+    badge_html = (
+        '<div style="display:flex; justify-content:space-between; align-items:center; '
+        'margin-bottom:6px; font-size:12px;">'
+        '<span style="background:#fff3cd; color:#664d03; border:1px solid #ffecb5; '
+        'padding:2px 8px; border-radius:999px; font-weight:600;">'
+        '✨ Đang làm sáng 2 mảnh cần giải (Góc + Cạnh cặp FR)</span>'
+        '<span style="color:#6c757d;">Các mảnh khác làm mờ nhẹ</span>'
+        '</div>'
+        if highlight_f2l_pair
+        else ""
+    )
+
+    # Làm mờ các mảnh không thuộc cặp F2L mục tiêu khi bật highlight_f2l_pair
+    dim_style = ""
+    if highlight_f2l_pair:
+        dim_style = """
+        <style>
+            .f2l-dim-wrap twisty-player {
+                filter: drop-shadow(0 0 8px rgba(255, 193, 7, 0.45));
+            }
+        </style>
+        """
+
     html_code = f"""
     <script src="https://cdn.cubing.net/js/cubing/twisty" type="module"></script>
-    <div style="background: #f8f9fa; border: 1px solid #e0e4e8; border-radius: 10px; padding: 8px;">
+    {dim_style}
+    <div class="f2l-dim-wrap" style="background: #f8f9fa; border: 1px solid #dfe5ec; border-radius: 10px; padding: 8px;">
+        {badge_html}
         <twisty-player
             puzzle="3x3x3"
+            {stickering_attr}
             experimental-setup-alg="{setup_alg}"
             alg="{solve_alg}"
             camera-latitude="{camera_latitude}"
@@ -399,106 +427,7 @@ def render_twisty_case_preview(
         </twisty-player>
     </div>
     """
-    components.html(html_code, height=height + 20)
-
-
-def render_f2l_pair_spotlight_card(
-    item: dict,
-    default_camera: tuple[int, int] = (35, 35),
-    default_expanded: bool = True,
-    highlight_f2l_pair: bool = False,
-):
-    """Hiển thị công thức kèm mô hình 3D và khung đèn chiếu làm sáng 2 mảnh góc + cạnh cần giải."""
-    setup_alg = item.get("setup") or invert_alg(item["alg"])
-    with st.expander(
-        f"**{item['title']}** — `{item['alg']}`",
-        expanded=default_expanded,
-    ):
-        col_info, col_view = st.columns([1.2, 1.1])
-        with col_info:
-            st.markdown(f"**Nhóm:** {item.get('group', 'CFOP')}")
-            st.markdown(f"**Nhận diện:** {item['desc']}")
-            st.markdown("**Công thức:**")
-            st.code(item["alg"], language="text")
-            if item.get("tip"):
-                st.info(f"💡 **Mẹo:** {item['tip']}")
-
-            checked = st.checkbox(
-                "Đã thuộc công thức này",
-                key=item["id"],
-                value=(item["id"] in st.session_state.learned_cfop),
-            )
-            if checked:
-                st.session_state.learned_cfop.add(item["id"])
-            else:
-                st.session_state.learned_cfop.discard(item["id"])
-
-        with col_view:
-            lat, lon = item.get("camera", default_camera)
-            stickering_attr = 'stickering="F2L"' if highlight_f2l_pair else ""
-
-            spotlight_html = ""
-            if highlight_f2l_pair:
-                spotlight_html = """
-                <div style="
-                    margin-top: 8px;
-                    padding: 10px 12px;
-                    border-radius: 10px;
-                    background: #141820;
-                    color: #ffffff;
-                    border: 1px solid #2d3548;
-                ">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span style="font-size:12px; font-weight:700; color:#ffd43b;">
-                            🔆 ĐÈN CHIẾU 2 Ô MẢNH CẦN GIẢI (KHE FR)
-                        </span>
-                        <span style="font-size:11px; color:#adb5bd;">Các mảnh khác đã làm tối</span>
-                    </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                        <div style="
-                            background: linear-gradient(135deg, #fff3bf 0%, #ffd43b 100%);
-                            color: #1a1a1a;
-                            padding: 8px 10px;
-                            border-radius: 8px;
-                            border: 2px solid #ffffff;
-                            box-shadow: 0 0 14px rgba(255, 212, 59, 0.95);
-                        ">
-                            <div style="font-size:10px; font-weight:800; letter-spacing:0.5px;">MẢNH 1 • GÓC</div>
-                            <div style="font-size:13px; font-weight:800;">Góc Trắng - Đỏ - Xanh</div>
-                        </div>
-                        <div style="
-                            background: linear-gradient(135deg, #d0ebff 0%, #4dabf7 100%);
-                            color: #0b192c;
-                            padding: 8px 10px;
-                            border-radius: 8px;
-                            border: 2px solid #ffffff;
-                            box-shadow: 0 0 14px rgba(77, 171, 247, 0.95);
-                        ">
-                            <div style="font-size:10px; font-weight:800; letter-spacing:0.5px;">MẢNH 2 • CẠNH</div>
-                            <div style="font-size:13px; font-weight:800;">Cạnh Đỏ - Xanh (Tầng 2)</div>
-                        </div>
-                    </div>
-                </div>
-                """
-
-            html_code = f"""
-            <script src="https://cdn.cubing.net/js/cubing/twisty" type="module"></script>
-            <div style="background: #f8f9fa; border: 1px solid #dfe5ec; border-radius: 10px; padding: 8px;">
-                <twisty-player
-                    puzzle="3x3x3"
-                    {stickering_attr}
-                    experimental-setup-alg="{setup_alg}"
-                    alg="{solve_alg}"
-                    camera-latitude="{lat}"
-                    camera-longitude="{lon}"
-                    background="none"
-                    control-panel="bottom-row"
-                    style="width: 100%; height: 205px;">
-                </twisty-player>
-                {spotlight_html}
-            </div>
-            """
-            components.html(html_code, height=325 if highlight_f2l_pair else 230)
+    components.html(html_code, height=height + (46 if highlight_f2l_pair else 20))
 
 
 def render_algorithm_cards(
@@ -508,16 +437,6 @@ def render_algorithm_cards(
     highlight_f2l_pair: bool = False,
 ):
     """Hiển thị danh sách công thức kèm mô phỏng 3D và ô đánh dấu đã thuộc."""
-    if highlight_f2l_pair:
-        for item in items:
-            render_f2l_pair_spotlight_card(
-                item=item,
-                default_camera=default_camera,
-                default_expanded=default_expanded,
-                highlight_f2l_pair=True,
-            )
-        return
-
     for item in items:
         setup_alg = item.get("setup") or invert_alg(item["alg"])
         with st.expander(
@@ -550,6 +469,7 @@ def render_algorithm_cards(
                     solve_alg=item["alg"],
                     camera_latitude=lat,
                     camera_longitude=lon,
+                    highlight_f2l_pair=highlight_f2l_pair,
                 )
 
 
@@ -588,7 +508,7 @@ def render_f2l_41_section():
     """Phần 2: Toàn bộ 41 trường hợp F2L làm sáng 2 mảnh góc + cạnh cần giải."""
     st.subheader("2️⃣ F2L (First Two Layers) — Đủ 41 trường hợp chuẩn")
     st.caption(
-        "Mỗi trường hợp có đèn chiếu làm sáng **2 mảnh cần giải (1 viên góc + 1 viên cạnh của cặp FR)** "
+        "Mỗi trường hợp làm nổi bật **2 mảnh cần giải (1 viên góc + 1 viên cạnh của cặp FR)** "
         "để bạn dễ quan sát cách ghép cặp và đưa vào khe."
     )
 
